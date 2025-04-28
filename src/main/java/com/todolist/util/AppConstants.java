@@ -53,6 +53,9 @@ public class AppConstants {
     public static final String DEFAULT_PAGE_SIZE_LARGE_STR = "10";
 
     // UI constants
+    public static final int ALERT_AUTO_CLOSE_DELAY = 5000;
+    public static final String TASKS_URL = "/tasks";
+    public static final String REDIRECT_TASKS = "redirect:/tasks";
     public static final String REDIRECT_FORMAT = "redirect:/tasks?page=%d&size=%d";
 
     // Table column widths
@@ -98,10 +101,12 @@ public class AppConstants {
     public static final String ID_PAGE_SIZE_SELECTOR = "pageSizeSelector";
 
     // Database configuration
-    public static final String DB_URL = "jdbc:mysql://localhost:3306/todo";
+    //public static final String DB_URL = "jdbc:mysql://localhost:3306/todo";
+    public static final String DB_URL = "jdbc:p6spy:mysql://localhost:3306/todo";
+    //public static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
+    public static final String DB_DRIVER = "com.p6spy.engine.spy.P6SpyDriver";
     public static final String DB_USERNAME = "root";
     public static final String DB_PASSWORD = "root";
-    public static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
     public static final int DB_MAX_POOL_SIZE = 10;
     public static final int DB_MIN_IDLE = 5;
     public static final int DB_IDLE_TIMEOUT = 30000;
