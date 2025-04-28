@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/tasks")
+@RequestMapping(AppConstants.ENDPOINT_TASKS)
 @RequiredArgsConstructor
 public class TaskController {
 
@@ -24,81 +24,50 @@ public class TaskController {
 
     @GetMapping
     public String listTasks(
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "5") int size,
+            @RequestParam(value = AppConstants.PARAM_PAGE, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER_STR) int page,
+            @RequestParam(value = AppConstants.PARAM_SIZE, defaultValue = AppConstants.DEFAULT_PAGE_SIZE_STR) int size,
             Model model) {
-
-        // Валидация параметров пагинации
-        if (page < AppConstants.DEFAULT_PAGE_NUMBER) {
-            page = AppConstants.DEFAULT_PAGE_NUMBER;
-        }
-
-        // Проверяем размер страницы на допустимые значения
-        boolean validSize = false;
-        for (int availableSize : AppConstants.AVAILABLE_PAGE_SIZES) {
-            if (size == availableSize) {
-                validSize = true;
-                break;
-            }
-        }
-
-        if (!validSize) {
-            size = AppConstants.DEFAULT_PAGE_SIZE;
-        }
 
         List<Task> tasks = taskService.getAllTasks(page, size);
         int totalPages = taskService.getTotalPages(size);
+        populateModel(model, tasks, page, size, totalPages);
 
-        model.addAttribute("tasks", tasks);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("pageSize", size);
-        model.addAttribute("task", new Task());
-        model.addAttribute("statuses", Status.values());
-        model.addAttribute("taskService", taskService);
-        model.addAttribute("constants", AppConstants.class);
-
-        return "task/list";
+        return AppConstants.VIEW_TASK_LIST;
     }
 
-    @PostMapping("/create")
-    public String createTask(@Valid @ModelAttribute("task") Task task,
+    @PostMapping(AppConstants.ENDPOINT_CREATE)
+    public String createTask(@Valid @ModelAttribute(AppConstants.ATTR_TASK) Task task,
                              BindingResult result,
                              Model model,
                              RedirectAttributes redirectAttributes,
-                             @RequestParam(value = "page", defaultValue = "1") int page,
-                             @RequestParam(value = "size", defaultValue = "10") int size) {
+                             @RequestParam(value = AppConstants.PARAM_PAGE, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER_STR) int page,
+                             @RequestParam(value = AppConstants.PARAM_SIZE, defaultValue = AppConstants.DEFAULT_PAGE_SIZE_LARGE_STR) int size) {
         if (result.hasErrors()) {
-            // Возвращаем данные, необходимые для основной страницы
+
             List<Task> tasks = taskService.getAllTasks(page, size);
             int totalPages = taskService.getTotalPages(size);
 
-            model.addAttribute("tasks", tasks);
-            model.addAttribute("currentPage", page);
-            model.addAttribute("totalPages", totalPages);
-            model.addAttribute("pageSize", size);
-            model.addAttribute("statuses", Status.values());
-            model.addAttribute("taskService", taskService);
-            model.addAttribute("constants", AppConstants.class);
-            return "task/list";
+            populateModel(model, tasks, page, size, totalPages);
+
+            return AppConstants.VIEW_TASK_LIST;
         }
 
         taskService.createTask(task);
-        redirectAttributes.addFlashAttribute("successMessage", AppConstants.TASK_CREATED_SUCCESS);
-        return "redirect:/tasks?page=" + page + "&size=" + size;
+        redirectAttributes.addFlashAttribute(AppConstants.ATTR_SUCCESS_MESSAGE, AppConstants.TASK_CREATED_SUCCESS);
+        return String.format(AppConstants.REDIRECT_FORMAT, page, size);
     }
 
-    @PostMapping("/update/{id}")
+    @PostMapping(AppConstants.ENDPOINT_UPDATE_ID)
     @ResponseBody
-    public String updateTaskInline(@PathVariable("id") Integer id,
-                                   @RequestParam("description") String description,
-                                   @RequestParam("status") String status) {
+    public String updateTaskInline(@PathVariable(AppConstants.PATH_ID) Integer id,
+                                   @RequestParam(AppConstants.PARAM_DESCRIPTION) String description,
+                                   @RequestParam(AppConstants.PARAM_STATUS) String status) {
         try {
             if (description == null || description.trim().isEmpty()) {
                 return AppConstants.DESCRIPTION_NOT_EMPTY;
             }
 
-            if (description.length() > 100) {
+            if (description.length() > AppConstants.DESCRIPTION_MAX_LENGTH_VALUE) {
                 return AppConstants.DESCRIPTION_MAX_LENGTH;
             }
 
@@ -109,11 +78,10 @@ public class TaskController {
                 task.setDescription(description);
 
                 try {
-                    // Конвертируем строковый статус в enum
                     Status statusEnum = Status.valueOf(status);
                     task.setStatus(statusEnum);
                 } catch (IllegalArgumentException e) {
-                    return "Invalid status value";
+                    return AppConstants.INVALID_STATUS_VALUE;
                 }
 
                 taskService.updateTask(task);
@@ -126,38 +94,53 @@ public class TaskController {
         }
     }
 
-    @PostMapping("/delete/{id}")
+    @PostMapping(AppConstants.ENDPOINT_DELETE_ID)
     @ResponseBody
-    public String deleteTaskAjax(@PathVariable("id") Integer id) {
+    public String deleteTaskAjax(@PathVariable(AppConstants.PATH_ID) Integer id) {
         try {
-            Optional<Task> task = taskService.getTaskById(id);
-            if (task.isPresent()) {
-                taskService.deleteTask(id);
-                return AppConstants.TASK_DELETED_SUCCESS;
-            } else {
-                return AppConstants.TASK_NOT_FOUND;
-            }
+            return deleteTaskInternal(id) ? AppConstants.TASK_DELETED_SUCCESS : AppConstants.TASK_NOT_FOUND;
         } catch (Exception e) {
             return AppConstants.ERROR_DELETING_TASK + e.getMessage();
         }
     }
 
-    @GetMapping("/delete/{id}")
-    public String deleteTask(@PathVariable("id") Integer id,
+    @GetMapping(AppConstants.ENDPOINT_DELETE_ID)
+    public String deleteTask(@PathVariable(AppConstants.PATH_ID) Integer id,
                              RedirectAttributes redirectAttributes,
-                             @RequestParam(value = "page", defaultValue = "1") int page,
-                             @RequestParam(value = "size", defaultValue = "10") int size) {
+                             @RequestParam(value = AppConstants.PARAM_PAGE, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER_STR) int page,
+                             @RequestParam(value = AppConstants.PARAM_SIZE, defaultValue = AppConstants.DEFAULT_PAGE_SIZE_LARGE_STR) int size) {
         try {
-            Optional<Task> task = taskService.getTaskById(id);
-            if (task.isPresent()) {
-                taskService.deleteTask(id);
-                redirectAttributes.addFlashAttribute("successMessage", AppConstants.TASK_DELETED_SUCCESS);
+            boolean deleted = deleteTaskInternal(id);
+            if (deleted) {
+                redirectAttributes.addFlashAttribute(AppConstants.ATTR_SUCCESS_MESSAGE, AppConstants.TASK_DELETED_SUCCESS);
             } else {
-                redirectAttributes.addFlashAttribute("errorMessage", AppConstants.TASK_NOT_FOUND);
+                redirectAttributes.addFlashAttribute(AppConstants.ATTR_ERROR_MESSAGE, AppConstants.TASK_NOT_FOUND);
             }
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", AppConstants.ERROR_DELETING_TASK + e.getMessage());
+            redirectAttributes.addFlashAttribute(AppConstants.ATTR_ERROR_MESSAGE, AppConstants.ERROR_DELETING_TASK + e.getMessage());
         }
-        return "redirect:/tasks?page=" + page + "&size=" + size;
+        return String.format(AppConstants.REDIRECT_FORMAT, page, size);
+    }
+
+
+    private void populateModel(Model model, List<Task> tasks, int page, int size, int totalPages) {
+        model.addAttribute(AppConstants.ATTR_TASKS, tasks);
+        model.addAttribute(AppConstants.ATTR_CURRENT_PAGE, page);
+        model.addAttribute(AppConstants.ATTR_TOTAL_PAGES, totalPages);
+        model.addAttribute(AppConstants.ATTR_PAGE_SIZE, size);
+        model.addAttribute(AppConstants.ATTR_TASK, new Task());
+        model.addAttribute(AppConstants.ATTR_STATUSES, Status.values());
+        model.addAttribute(AppConstants.ATTR_TASK_SERVICE, taskService);
+        model.addAttribute(AppConstants.ATTR_CONSTANTS, AppConstants.class);
+    }
+
+
+    private boolean deleteTaskInternal(Integer id) {
+        Optional<Task> task = taskService.getTaskById(id);
+        if (task.isPresent()) {
+            taskService.deleteTask(id);
+            return true;
+        }
+        return false;
     }
 }

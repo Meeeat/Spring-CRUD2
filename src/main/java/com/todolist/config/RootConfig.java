@@ -1,5 +1,6 @@
 package com.todolist.config;
 
+import com.todolist.util.AppConstants;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
@@ -19,20 +20,20 @@ import java.util.Properties;
 
 @Configuration
 @EnableTransactionManagement
-@ComponentScan(basePackages = {"com.todolist.dao", "com.todolist.service"})
+@ComponentScan(basePackages = {AppConstants.PACKAGE_DAO_SERVICE})
 public class RootConfig {
 
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://localhost:3306/todo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
-        config.setUsername("root");
-        config.setPassword("root");
-        config.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        config.setMaximumPoolSize(10);
-        config.setMinimumIdle(5);
-        config.setIdleTimeout(30000);
-        config.setPoolName("SpringHikariCP");
+        config.setJdbcUrl(AppConstants.DB_URL);
+        config.setUsername(AppConstants.DB_USERNAME);
+        config.setPassword(AppConstants.DB_PASSWORD);
+        config.setDriverClassName(AppConstants.DB_DRIVER);
+        config.setMaximumPoolSize(AppConstants.DB_MAX_POOL_SIZE);
+        config.setMinimumIdle(AppConstants.DB_MIN_IDLE);
+        config.setIdleTimeout(AppConstants.DB_IDLE_TIMEOUT);
+        config.setPoolName(AppConstants.DB_POOL_NAME);
 
         return new HikariDataSource(config);
     }
@@ -41,7 +42,7 @@ public class RootConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource());
-        em.setPackagesToScan("com.todolist.domain");
+        em.setPackagesToScan(AppConstants.PACKAGE_DOMAIN);
 
         JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         em.setJpaVendorAdapter(vendorAdapter);
@@ -64,10 +65,10 @@ public class RootConfig {
 
     private Properties additionalProperties() {
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
-        properties.setProperty("hibernate.show_sql", "true");
-        properties.setProperty("hibernate.format_sql", "true");
-        properties.setProperty("hibernate.hbm2ddl.auto", "validate");
+        properties.setProperty(AppConstants.HIBERNATE_DIALECT, AppConstants.HIBERNATE_DIALECT_VALUE);
+        properties.setProperty(AppConstants.HIBERNATE_SHOW_SQL, AppConstants.HIBERNATE_SHOW_SQL_VALUE);
+        properties.setProperty(AppConstants.HIBERNATE_FORMAT_SQL, AppConstants.HIBERNATE_FORMAT_SQL_VALUE);
+        properties.setProperty(AppConstants.HIBERNATE_HBM2DDL_AUTO, AppConstants.HIBERNATE_HBM2DDL_AUTO_VALUE);
         return properties;
     }
 }

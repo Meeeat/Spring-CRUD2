@@ -19,12 +19,10 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public List<Task> getAllTasks(int page, int size) {
-        // Проверка параметров пагинации и их корректировка, если необходимо
         if (page < AppConstants.DEFAULT_PAGE_NUMBER) {
             page = AppConstants.DEFAULT_PAGE_NUMBER;
         }
 
-        // Проверяем, содержится ли размер страницы в списке доступных размеров
         boolean validSize = false;
         for (int availableSize : AppConstants.AVAILABLE_PAGE_SIZES) {
             if (size == availableSize) {
@@ -49,7 +47,6 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public int getTotalPages(int size) {
-        // Проверка размера страницы и его корректировка, если необходимо
         boolean validSize = false;
         for (int availableSize : AppConstants.AVAILABLE_PAGE_SIZES) {
             if (size == availableSize) {
