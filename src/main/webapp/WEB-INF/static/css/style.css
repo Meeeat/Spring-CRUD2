@@ -1,0 +1,61 @@
+/* Custom styles for Todo List application */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.card {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.task-status-0 { /* IN_PROGRESS */
+    background-color: #fff3cd !important;
+}
+
+.task-status-1 { /* DONE */
+    background-color: #d1e7dd !important;
+}
+
+.task-status-2 { /* PAUSED */
+    background-color: #f8d7da !important;
+}
+
+.task-row .edit-form {
+    display: none;
+}
+
+.task-row.editing .task-display {
+    display: none;
+}
+
+.task-row.editing .edit-form {
+    display: flex;
+    gap: 5px;
+}
+
+.task-row .task-display {
+    display: flex;
+    gap: 5px;
+}
+
+.pagination {
+    margin-top: 20px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        max-width: 100%;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}

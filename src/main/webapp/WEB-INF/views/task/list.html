@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}"/>
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}"/>
+    <title th:text="${constants.TASK_LIST_TITLE}">Task List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <style>
+        .task-status-0 { background-color: #fff3cd; } /* IN_PROGRESS */
+        .task-status-1 { background-color: #d1e7dd; } /* DONE */
+        .task-status-2 { background-color: #f8d7da; } /* PAUSED */
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            background-color: #f8f9fa;
+        }
+        .edit-form {
+            display: none;
+        }
+        .task-row.editing .task-display {
+            display: none;
+        }
+        .task-row.editing .edit-form {
+            display: flex;
+        }
+        .page-size-selector {
+            width: auto;
+            display: inline-block;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0" th:text="${constants.TASK_LIST_TITLE}">Task List</h3>
+                    <span class="badge bg-light text-dark" th:text="${#strings.replace(constants.TASK_TOTAL_COUNT, '%d / %d', #lists.size(tasks) + ' / ' + taskService.getTotalTasksCount())}">Total: 0</span>
+                </div>
+                <div class="card-body">
+                    <!-- Success message -->
+                    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <span th:text="${successMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <!-- Error message -->
+                    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <span th:text="${errorMessage}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <!-- Create new task form -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0" th:text="${constants.CREATE_NEW_TASK}">Create New Task</h5>
+                        </div>
+                        <div class="card-body">
+                            <form th:action="@{/tasks/create}" th:object="${task}" method="post">
+                                <!-- Description field -->
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control"
+                                               th:placeholder="${constants.COLUMN_DESCRIPTION}"
+                                               th:field="*{description}"
+                                               th:classappend="${#fields.hasErrors('description') ? 'is-invalid' : ''}">
+                                        <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">
+                                            Description error
+                                        </div>
+                                    </div>
+
+                                    <!-- Status field -->
+                                    <div class="col-md-4">
+                                        <select class="form-select" th:field="*{status}">
+                                            <option th:each="statusOption : ${statuses}"
+                                                    th:value="${statusOption}"
+                                                    th:text="${statusOption}">Status</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Submit button -->
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-success w-100" th:text="${constants.BUTTON_ADD}">Add Task</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Tasks table -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                            <tr>
+                                <th th:style="'width: ' + ${constants.COLUMN_ID_WIDTH}" th:text="${constants.COLUMN_ID}">ID</th>
+                                <th th:style="'width: ' + ${constants.COLUMN_DESCRIPTION_WIDTH}" th:text="${constants.COLUMN_DESCRIPTION}">Description</th>
+                                <th th:style="'width: ' + ${constants.COLUMN_STATUS_WIDTH}" th:text="${constants.COLUMN_STATUS}">Status</th>
+                                <th th:style="'width: ' + ${constants.COLUMN_ACTIONS_WIDTH}" th:text="${constants.COLUMN_ACTIONS}">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="task : ${tasks}" th:classappend="${'task-status-' + task.status.ordinal()}" class="task-row" th:attr="data-task-id=${task.id}">
+                                <td th:text="${task.id}"></td>
+                                <td>
+                                    <!-- Display view -->
+                                    <span class="task-display task-display-description" th:text="${task.description}"></span>
+                                    <!-- Edit form -->
+                                    <div class="edit-form">
+                                        <input type="text" class="form-control edit-description" th:value="${task.description}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <!-- Display view -->
+                                    <span class="task-display task-status" th:text="${task.status}"></span>
+                                    <!-- Edit form -->
+                                    <div class="edit-form">
+                                        <select class="form-select edit-status">
+                                            <option th:each="statusOption : ${statuses}"
+                                                    th:value="${statusOption}"
+                                                    th:text="${statusOption}"
+                                                    th:selected="${statusOption == task.status}">Status</option>
+                                        </select>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="task-display">
+                                        <button class="btn btn-sm btn-primary edit-btn" th:text="${constants.BUTTON_EDIT}">Edit</button>
+                                        <button class="btn btn-sm btn-danger delete-btn" th:text="${constants.BUTTON_DELETE}">Delete</button>
+                                    </div>
+                                    <div class="edit-form">
+                                        <button class="btn btn-sm btn-success save-btn" th:text="${constants.BUTTON_SAVE}">Save</button>
+                                        <button class="btn btn-sm btn-secondary cancel-btn" th:text="${constants.BUTTON_CANCEL}">Cancel</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:if="${tasks.empty}">
+                                <td colspan="4" class="text-center" th:text="${constants.NO_TASKS_FOUND}">No tasks found</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination with page size selector -->
+                    <div class="d-flex justify-content-between align-items-center" th:if="${totalPages > 0}">
+                        <div class="d-flex align-items-center">
+                            <span th:text="${constants.PAGE_SIZE_TEXT}">Page size:</span>
+                            <select id="pageSizeSelector" class="form-select page-size-selector mx-2">
+                                <option th:each="size : ${constants.AVAILABLE_PAGE_SIZES}"
+                                        th:value="${size}"
+                                        th:text="${size}"
+                                        th:selected="${pageSize == size}">5</option>
+                            </select>
+                            <span th:text="${constants.ITEMS_PER_PAGE_TEXT}">items per page</span>
+                        </div>
+
+                        <nav>
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item" th:classappend="${currentPage == 1 ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/tasks(page=1, size=${pageSize})}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage == 1 ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/tasks(page=${currentPage - 1}, size=${pageSize})}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+
+                                <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+                                    th:classappend="${i == currentPage ? 'active' : ''}">
+                                    <a class="page-link" th:href="@{/tasks(page=${i}, size=${pageSize})}" th:text="${i}"></a>
+                                </li>
+
+                                <li class="page-item" th:classappend="${currentPage == totalPages ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/tasks(page=${currentPage + 1}, size=${pageSize})}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item" th:classappend="${currentPage == totalPages ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/tasks(page=${totalPages}, size=${pageSize})}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        // Получаем константы из Spring
+        const constants = {
+            TASK_DELETED_SUCCESS: [[${constants.TASK_DELETED_SUCCESS}]],
+            TASK_UPDATED_SUCCESS: [[${constants.TASK_UPDATED_SUCCESS}]],
+            DESCRIPTION_EMPTY_ERROR: [[${constants.DESCRIPTION_EMPTY_ERROR}]],
+            ERROR_PREFIX: [[${constants.ERROR_PREFIX}]],
+            ALERT_AUTO_CLOSE_DELAY: [[${constants.ALERT_AUTO_CLOSE_DELAY}]],
+            IN_PROGRESS_CLASS: [[${constants.IN_PROGRESS_CLASS}]],
+            DONE_CLASS: [[${constants.DONE_CLASS}]],
+            PAUSED_CLASS: [[${constants.PAUSED_CLASS}]],
+            IN_PROGRESS_BADGE: [[${constants.IN_PROGRESS_BADGE}]],
+            DONE_BADGE: [[${constants.DONE_BADGE}]],
+            PAUSED_BADGE: [[${constants.PAUSED_BADGE}]]
+        };
+
+        // Auto-close alerts
+        const alertElements = document.querySelectorAll('.alert');
+        alertElements.forEach(function(alert) {
+            setTimeout(function() {
+                const closeButton = alert.querySelector('.btn-close');
+                if (closeButton) {
+                    closeButton.click();
+                }
+            }, constants.ALERT_AUTO_CLOSE_DELAY);
+        });
+
+        // Page size selector handler
+        const pageSizeSelector = document.getElementById('pageSizeSelector');
+        pageSizeSelector.addEventListener('change', function() {
+            const selectedSize = this.value;
+            window.location.href = `/tasks?page=1&size=${selectedSize}`;
+        });
+
+        // Apply status styling
+        const taskRows = document.querySelectorAll('[class*="task-status-"]');
+        taskRows.forEach(function(row) {
+            const status = row.querySelector('.task-status').textContent;
+            const statusCell = row.querySelector('td:nth-child(3)');
+            const statusElement = statusCell.querySelector('.task-status');
+
+            let badgeClass = constants.IN_PROGRESS_BADGE;
+            if (status === 'DONE') {
+                badgeClass = constants.DONE_BADGE;
+            } else if (status === 'PAUSED') {
+                badgeClass = constants.PAUSED_BADGE;
+            }
+
+            statusElement.outerHTML = `<span class="badge ${badgeClass} task-status">${status}</span>`;
+        });
+
+        // Inline editing
+        const editButtons = document.querySelectorAll('.edit-btn');
+        const saveButtons = document.querySelectorAll('.save-btn');
+        const cancelButtons = document.querySelectorAll('.cancel-btn');
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+
+        // Enable edit mode
+        editButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const taskRow = this.closest('.task-row');
+                taskRow.classList.add('editing');
+            });
+        });
+
+        // Cancel edit mode
+        cancelButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const taskRow = this.closest('.task-row');
+                taskRow.classList.remove('editing');
+            });
+        });
+
+        // Delete task без подтверждения
+        deleteButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const taskRow = this.closest('.task-row');
+                const taskId = taskRow.dataset.taskId;
+
+                // Отправляем AJAX запрос на удаление задачи
+                fetch(`/tasks/delete/${taskId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    }
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        if (data === constants.TASK_DELETED_SUCCESS) {
+                            // Удаляем строку из таблицы
+                            taskRow.remove();
+
+                            // Обновляем общее количество (прямое обновление DOM)
+                            updateCountBadge();
+
+                            // Показываем сообщение об успехе
+                            showMessage(data);
+                        } else {
+                            showMessage(constants.ERROR_PREFIX + data, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        showMessage(constants.ERROR_PREFIX + error, 'danger');
+                    });
+            });
+        });
+
+        // Save changes
+        saveButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const taskRow = this.closest('.task-row');
+                const taskId = taskRow.dataset.taskId;
+                const description = taskRow.querySelector('.edit-description').value;
+                const status = taskRow.querySelector('.edit-status').value;
+
+                // Client-side validation
+                if (!description.trim()) {
+                    showMessage(constants.DESCRIPTION_EMPTY_ERROR, 'danger');
+                    return;
+                }
+
+                // Send AJAX request to update task
+                fetch(`/tasks/update/${taskId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `description=${encodeURIComponent(description)}&status=${encodeURIComponent(status)}`
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        if (data === constants.TASK_UPDATED_SUCCESS) {
+                            // Update display values
+                            const descriptionDisplay = taskRow.querySelector('.task-display-description');
+                            descriptionDisplay.textContent = description;
+
+                            // Update status badge
+                            const statusBadge = taskRow.querySelector('.task-status');
+                            statusBadge.textContent = status;
+
+                            // Update row class for color coding
+                            taskRow.classList.remove(constants.IN_PROGRESS_CLASS, constants.DONE_CLASS, constants.PAUSED_CLASS);
+
+                            let statusClass = constants.IN_PROGRESS_CLASS;
+                            let badgeClass = constants.IN_PROGRESS_BADGE;
+
+                            if (status === 'DONE') {
+                                statusClass = constants.DONE_CLASS;
+                                badgeClass = constants.DONE_BADGE;
+                            } else if (status === 'PAUSED') {
+                                statusClass = constants.PAUSED_CLASS;
+                                badgeClass = constants.PAUSED_BADGE;
+                            }
+
+                            taskRow.classList.add(statusClass);
+
+                            // Update badge color
+                            statusBadge.classList.remove(constants.IN_PROGRESS_BADGE, constants.DONE_BADGE, constants.PAUSED_BADGE);
+                            statusBadge.classList.add(badgeClass);
+
+                            // Exit edit mode
+                            taskRow.classList.remove('editing');
+
+                            // Show success message
+                            showMessage(data);
+                        } else {
+                            showMessage(constants.ERROR_PREFIX + data, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        showMessage(constants.ERROR_PREFIX + error, 'danger');
+                    });
+            });
+        });
+
+        // Helper function to show messages
+        function showMessage(message, type = 'success') {
+            const alertContainer = document.createElement('div');
+            alertContainer.className = `alert alert-${type} alert-dismissible fade show`;
+            alertContainer.innerHTML = `
+                <span>${message}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+
+            const cardBody = document.querySelector('.card-body');
+            cardBody.insertBefore(alertContainer, cardBody.firstChild);
+
+            setTimeout(() => {
+                alertContainer.querySelector('.btn-close').click();
+            }, constants.ALERT_AUTO_CLOSE_DELAY);
+        }
+
+        // Helper function to update count badge directly in DOM
+        function updateCountBadge() {
+            const countBadge = document.querySelector('.badge.bg-light.text-dark');
+            if (countBadge) {
+                const taskRows = document.querySelectorAll('.task-row');
+                const currentCount = taskRows.length;
+                const totalCountText = countBadge.textContent;
+                const totalMatch = totalCountText.match(/Total: (\d+) \/ (\d+)/);
+
+                if (totalMatch && totalMatch[2]) {
+                    const totalCount = parseInt(totalMatch[2]);
+                    countBadge.textContent = `Total: ${currentCount} / ${totalCount - 1}`;
+                }
+            }
+        }
+
+        // Focus description field in form
+        const descriptionField = document.querySelector('input[name="description"]');
+        if (descriptionField) {
+            descriptionField.focus();
+        }
+    });
+</script>
+</body>
+</html>
