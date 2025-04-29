@@ -23,13 +23,28 @@ import java.util.Properties;
 @ComponentScan(basePackages = {AppConstants.PACKAGE_DAO_SERVICE})
 public class RootConfig {
 
+    private String getEnvOrDefault(String envName, String defaultValue) {
+        String value = System.getenv(envName);
+        return (value != null && !value.isEmpty()) ? value : defaultValue;
+    }
+
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(AppConstants.DB_URL);
-        config.setUsername(AppConstants.DB_USERNAME);
-        config.setPassword(AppConstants.DB_PASSWORD);
-        config.setDriverClassName(AppConstants.DB_DRIVER);
+
+        String dbUrl = getEnvOrDefault("DB_URL", AppConstants.DB_URL);
+        String dbUser = getEnvOrDefault("DB_USER", AppConstants.DB_USERNAME);
+        String dbPassword = getEnvOrDefault("DB_PASSWORD", AppConstants.DB_PASSWORD);
+        String dbDriver = AppConstants.DB_DRIVER;
+
+        if (dbUrl.contains("mysql:3306")) {
+            dbDriver = "com.mysql.cj.jdbc.Driver";
+        }
+
+        config.setJdbcUrl(dbUrl);
+        config.setUsername(dbUser);
+        config.setPassword(dbPassword);
+        config.setDriverClassName(dbDriver);
         config.setMaximumPoolSize(AppConstants.DB_MAX_POOL_SIZE);
         config.setMinimumIdle(AppConstants.DB_MIN_IDLE);
         config.setIdleTimeout(AppConstants.DB_IDLE_TIMEOUT);

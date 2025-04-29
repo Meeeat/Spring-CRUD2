@@ -103,6 +103,7 @@ public class AppConstants {
     // Database configuration
     //public static final String DB_URL = "jdbc:mysql://localhost:3306/todo";
     public static final String DB_URL = "jdbc:p6spy:mysql://localhost:3306/todo";
+    //public static final String DB_URL = "jdbc:p6spy:mysql://db:3306/todo";
     //public static final String DB_DRIVER = "com.mysql.cj.jdbc.Driver";
     public static final String DB_DRIVER = "com.p6spy.engine.spy.P6SpyDriver";
     public static final String DB_USERNAME = "root";
