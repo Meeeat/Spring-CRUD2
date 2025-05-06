@@ -1,4 +1,4 @@
-FROM tomcat
+FROM maven:3.9.8-sapmachine-21 AS build
 LABEL authors="Siberia"
 
 #COPY /target/todo-list-1.0-SNAPSHOT.war /usr/local/tomcat/webapps/
